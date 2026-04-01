@@ -6,6 +6,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     git \
     curl \
+    python3-dev \
+    libsqlite3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user (UID 1000 is default for HF Spaces)
@@ -20,10 +22,16 @@ USER appuser
 ENV UV_COMPILE_BYTECODE=1
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Copy project files (ensuring correct ownership)
+# Copy only dependency files first to cache layers
+COPY --chown=appuser:appuser pyproject.toml uv.lock ./
+
+# Install dependencies only (no project code yet)
+RUN uv sync --no-install-project --no-dev
+
+# Copy the rest of the project files
 COPY --chown=appuser:appuser . .
 
-# Install dependencies as appuser
+# Final project synchronization
 RUN uv sync --no-dev
 
 # HF Spaces uses port 7860
