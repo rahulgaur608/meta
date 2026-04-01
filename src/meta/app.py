@@ -8,7 +8,7 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel  # FastAPI still needs pydantic for its own request models
@@ -38,7 +38,7 @@ def _get_or_create_session(session_id: Optional[str]) -> tuple[str, SQLQueryEnv]
 # ---------------------------------------------------------------------------
 
 class ResetRequest(BaseModel):
-    task_id: str
+    task_id: Optional[str] = None
     session_id: Optional[str] = None
     seed: Optional[int] = None
 
@@ -107,10 +107,13 @@ async def list_tasks():
 
 
 @app.post("/reset")
-async def reset(req: ResetRequest):
+async def reset(req: ResetRequest = Body(None)):
+    if req is None:
+        req = ResetRequest()
     sid, env = _get_or_create_session(req.session_id)
+    task_id = req.task_id or "task_salary_agg"
     try:
-        state = env.reset(req.task_id, seed=req.seed)
+        state = env.reset(task_id, seed=req.seed)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return state.model_dump()
