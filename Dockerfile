@@ -33,7 +33,7 @@ RUN uv sync --no-install-project --no-dev
 COPY --chown=appuser:appuser . .
 
 # Final project synchronization with verbose logging
-RUN uv sync --no-dev --verbose
+RUN uv sync --no-dev --no-editable --verbose
 
 # HF Spaces uses port 7860
 EXPOSE 7860

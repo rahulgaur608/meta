@@ -156,7 +156,7 @@ async def delete_session(session_id: str):
 
 def main():
     import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=7860, reload=True)
+    uvicorn.run("meta.app:app", host="0.0.0.0", port=7860, reload=True)
 
 
 if __name__ == "__main__":
