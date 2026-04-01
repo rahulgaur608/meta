@@ -1,3 +1,13 @@
+---
+title: SQL Query Optimization Environment
+emoji: 📊
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_file: app.py
+pinned: false
+---
+
 # SQL Query Optimization Environment
 
 An OpenEnv-compliant environment for training and evaluating AI agents that write correct, efficient SQL queries.
