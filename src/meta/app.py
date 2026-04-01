@@ -103,7 +103,7 @@ async def list_tasks():
     env = SQLQueryEnv()
     tasks = env.list_tasks()
     env.teardown()
-    return {"tasks": [t.model_dump() for t in tasks]}
+    return [t.model_dump() for t in tasks]
 
 
 @app.post("/reset")
@@ -113,7 +113,7 @@ async def reset(req: ResetRequest):
         state = env.reset(req.task_id, seed=req.seed)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return {"session_id": sid, "observation": state.model_dump()}
+    return state.model_dump()
 
 
 @app.post("/step")

@@ -98,4 +98,4 @@ endpoints:
 docker:
   base_image: python:3.11-slim
   port: 7860
-  startup_command: "uvicorn app:app --host 0.0.0.0 --port 7860"
+  startup_command: "uv run server"
