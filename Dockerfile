@@ -17,7 +17,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 COPY --chown=appuser:appuser . .
 
 # Install dependencies as appuser
-RUN uv sync --frozen --no-dev
+RUN uv sync --no-dev
 
 # HF Spaces uses port 7860
 EXPOSE 7860
