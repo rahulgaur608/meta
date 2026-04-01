@@ -5,7 +5,7 @@ FROM ghcr.io/astral-sh/uv:latest@sha256:c4f5de312ee66d46810635ffc5df34a1973ba753
 FROM python:3.11-slim
 
 # Copy the uv binary from the uv image
-COPY --from=uv /export/uv /export/uvx /bin/
+COPY --from=uv /uv /uvx /bin/
 
 # Set working directory
 WORKDIR /app
