@@ -20,6 +20,7 @@ USER appuser
 
 # Set environment variables for uv
 ENV UV_COMPILE_BYTECODE=1
+ENV UV_CACHE_DIR="/app/.cache"
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy only dependency files first to cache layers
@@ -31,8 +32,8 @@ RUN uv sync --no-install-project --no-dev
 # Copy the rest of the project files
 COPY --chown=appuser:appuser . .
 
-# Final project synchronization
-RUN uv sync --no-dev
+# Final project synchronization with verbose logging
+RUN uv sync --no-dev --verbose
 
 # HF Spaces uses port 7860
 EXPOSE 7860
