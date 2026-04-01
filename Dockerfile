@@ -36,8 +36,6 @@ RUN uv sync --no-install-project --no-dev
 # Copy the rest of the project files
 COPY --chown=appuser:appuser . .
 
-# Final project synchronization using pip for better stability in flat layouts
-RUN uv pip install --no-dev --no-editable .
 
 # User ownership check
 RUN chown -R appuser:appuser /app
@@ -49,4 +47,4 @@ USER appuser
 EXPOSE 7860
 
 # Command to run the application
-CMD ["uv", "run", "server"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7860"]
