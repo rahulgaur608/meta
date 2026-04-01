@@ -39,8 +39,8 @@ MAX_TOKENS = 800
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from env.environment import SQLQueryEnv
-from env.models import SQLAction, DatabaseState
+from meta.env.environment import SQLQueryEnv
+from meta.env.models import SQLAction, DatabaseState
 
 
 # ---------------------------------------------------------------------------

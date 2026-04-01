@@ -8,8 +8,8 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from env.environment import SQLQueryEnv
-from env.models import SQLAction, DifficultyLevel
+from meta.env.environment import SQLQueryEnv
+from meta.env.models import SQLAction, DifficultyLevel
 
 
 def test_list_tasks():

@@ -13,8 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel  # FastAPI still needs pydantic for its own request models
 
-from env.environment import SQLQueryEnv
-from env.models import SQLAction, TaskInfo
+from meta.env.environment import SQLQueryEnv
+from meta.env.models import SQLAction, TaskInfo
 
 
 # ---------------------------------------------------------------------------

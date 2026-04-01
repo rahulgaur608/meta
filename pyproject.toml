@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-server = "app:main"
+server = "meta:main"
 
 [build-system]
 requires = ["uv_build>=0.11.0,<0.12.0"]
