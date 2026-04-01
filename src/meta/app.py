@@ -84,6 +84,15 @@ app.add_middleware(
 # Endpoints
 # ---------------------------------------------------------------------------
 
+@app.get("/")
+async def root():
+    return {
+        "message": "Welcome to the SQL Query Optimization Environment API",
+        "docs": "/docs",
+        "health": "/health",
+    }
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "env": "sql-query-optimization", "version": "1.0.0"}
