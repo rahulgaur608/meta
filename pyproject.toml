@@ -6,12 +6,13 @@ readme = "README.md"
 authors = [
     { name = "RAHUL G", email = "rahulgaur608@gmail.com" }
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.128.8",
     "openai>=2.30.0",
     "pydantic>=2.12.5",
     "uvicorn[standard]>=0.39.0",
+    "openenv-core>=0.2.0",
 ]
 
 [project.scripts]
