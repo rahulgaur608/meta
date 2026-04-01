@@ -9,8 +9,8 @@ from typing import Any, Dict, List, Optional
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from meta.env.database import DatabaseEngine
-from meta.env.models import (
+from env.database import DatabaseEngine
+from env.models import (
     DatabaseState,
     DifficultyLevel,
     QueryResult,
@@ -19,8 +19,8 @@ from meta.env.models import (
     TableSchema,
     TaskInfo,
 )
-from meta.tasks.graders import GRADER_MAP
-from meta.tasks.registry import TASK_REGISTRY
+from tasks.graders import GRADER_MAP
+from tasks.registry import TASK_REGISTRY
 
 
 class SQLQueryEnv:

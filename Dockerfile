@@ -1,5 +1,14 @@
+# Use an official Python runtime as a parent image
+FROM ghcr.io/astral-sh/uv:latest@sha256:c4f5de312ee66d46810635ffc5df34a1973ba753e7241ce3a08ef979ddd7bea5 AS uv
+
+# Use a multi-stage build to keep the final image clean
 FROM python:3.11-slim
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
+# Copy the uv binary from the uv image
+COPY --from=uv /export/uv /export/uvx /bin/
+
+# Set working directory
+WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -10,13 +19,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsqlite3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user (UID 1000 is default for HF Spaces)
+# Add a non-root user
 RUN useradd -m -u 1000 appuser
-WORKDIR /app
-RUN chown appuser:appuser /app
-
-# Switch to non-root user
-USER appuser
 
 # Set environment variables for uv
 ENV UV_COMPILE_BYTECODE=1
@@ -26,21 +30,23 @@ ENV PATH="/app/.venv/bin:$PATH"
 # Copy only dependency files first to cache layers
 COPY --chown=appuser:appuser pyproject.toml uv.lock ./
 
-# Install dependencies only (no project code yet)
+# Install dependencies only (no-install-project)
 RUN uv sync --no-install-project --no-dev
 
 # Copy the rest of the project files
 COPY --chown=appuser:appuser . .
 
-# Final project synchronization with verbose logging
-RUN uv sync --no-dev --no-editable --verbose
+# Final project synchronization using pip for better stability in flat layouts
+RUN uv pip install --no-dev --no-editable .
+
+# User ownership check
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
 
 # HF Spaces uses port 7860
 EXPOSE 7860
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:7860/health')"
-
-# Run the server
+# Command to run the application
 CMD ["uv", "run", "server"]

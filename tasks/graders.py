@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional, Set
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from meta.env.models import ExecutionPlan, QueryResult
+from env.models import ExecutionPlan, QueryResult
 
 
 def _col_match(result_cols: list, expected_cols: Set[str], threshold: float = 0.5) -> float:

@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from meta.env.models import ColumnDef, ExecutionPlan, QueryResult, TableSchema
+from env.models import ColumnDef, ExecutionPlan, QueryResult, TableSchema
 
 
 def _sqlite_type(col_type: str) -> str:

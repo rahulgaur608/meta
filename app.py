@@ -13,8 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel  # FastAPI still needs pydantic for its own request models
 
-from meta.env.environment import SQLQueryEnv
-from meta.env.models import SQLAction, TaskInfo
+from env.environment import SQLQueryEnv
+from env.models import SQLAction, TaskInfo
 
 
 # ---------------------------------------------------------------------------
@@ -156,7 +156,7 @@ async def delete_session(session_id: str):
 
 def main():
     import uvicorn
-    uvicorn.run("meta.app:app", host="0.0.0.0", port=7860, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=7860, reload=True)
 
 
 if __name__ == "__main__":
