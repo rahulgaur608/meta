@@ -1,0 +1,101 @@
+name: sql-query-optimization
+version: "1.0.0"
+description: >
+  A real-world OpenEnv environment for training and evaluating AI agents
+  that write efficient, correct SQL queries. Agents are given a database
+  schema, sample data, and a natural-language objective. They must produce
+  SQL SELECT queries that satisfy the objective, with rewards based on
+  correctness, result structure, ordering, filter logic, and query efficiency.
+
+author: openenv-submission
+license: MIT
+
+environment:
+  type: sql-query-optimization
+  action_space:
+    type: structured
+    schema:
+      sql:
+        type: string
+        description: "A SQL SELECT or WITH (CTE) query to execute"
+      explanation:
+        type: string
+        nullable: true
+        description: "Optional explanation of the optimization approach"
+  observation_space:
+    type: structured
+    schema:
+      task_id: string
+      task_name: string
+      difficulty: enum[easy, medium, hard]
+      description: string
+      schema:
+        type: array
+        items: TableSchema
+      sample_data: object
+      objective: string
+      constraints: array[string]
+      hints: array[string]
+      step_count: integer
+      max_steps: integer
+      last_sql: string|null
+      last_result: QueryResult|null
+      last_plan: ExecutionPlan|null
+      last_reward: float
+      done: boolean
+
+tasks:
+  - id: task_salary_agg
+    name: "Department Salary Aggregation"
+    difficulty: easy
+    description: >
+      Write an aggregate SQL query over 500 employee records. 
+      Filter for active employees, group by department, compute 
+      average salary and headcount, order descending by salary.
+    max_steps: 10
+    reward_range: [0.0, 1.0]
+
+  - id: task_top_customers
+    name: "Top Customers by Revenue"
+    difficulty: medium
+    description: >
+      JOIN customers (300 rows) and orders (2000 rows). Filter for 
+      completed orders, aggregate total revenue per customer, return 
+      the top 10 by revenue with correct column names.
+    max_steps: 10
+    reward_range: [0.0, 1.0]
+
+  - id: task_user_retention
+    name: "High-Value User Retention Report"
+    difficulty: hard
+    description: >
+      Multi-CTE query spanning users, event_logs (5000 rows), and 
+      sessions (500 rows). Identify users with ≥5 events, ≥1 purchase, 
+      and avg session duration >300s. Use CTEs/subqueries. Requires 
+      window-function-level thinking with correct filter logic.
+    max_steps: 10
+    reward_range: [0.0, 1.0]
+
+reward:
+  type: continuous
+  range: [0.0, 1.0]
+  description: >
+    Composite reward with partial credit:
+    - Column presence and naming (25–30%)
+    - Result correctness (row count, data types, values) (25–40%)
+    - Ordering correctness (10–15%)
+    - Query efficiency (index usage vs seq scan) (up to 25%)
+    Reward is computed deterministically from the query result and 
+    SQLite EXPLAIN QUERY PLAN output.
+
+endpoints:
+  health: GET /health
+  list_tasks: GET /tasks
+  reset: POST /reset
+  step: POST /step
+  state: GET /state
+
+docker:
+  base_image: python:3.11-slim
+  port: 7860
+  startup_command: "uvicorn app:app --host 0.0.0.0 --port 7860"
