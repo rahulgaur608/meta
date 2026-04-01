@@ -1,6 +1,13 @@
 FROM python:3.11-slim
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 # Create non-root user (UID 1000 is default for HF Spaces)
 RUN useradd -m -u 1000 appuser
 WORKDIR /app
