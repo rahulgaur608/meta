@@ -11,7 +11,7 @@ pinned: false
 
 An OpenEnv-compliant environment for training and evaluating AI agents that write correct, efficient SQL queries.
 
-Agents receive a database schema, sample data, and a natural-language objective. They must produce SQL `SELECT` queries that satisfy the objective. Rewards are based on correctness, result structure, ordering, filter accuracy, and query efficiency.
+Agents receive a database schema, sample data, and a natural-language objective. They must produce SQL `SELECT` queries that satisfy the objective. Rewards are based on **data correctness** (validated against reference answers), result structure, ordering, filter accuracy, and query efficiency.
 
 ---
 
@@ -22,16 +22,19 @@ SQL query writing and optimization is one of the most common tasks in data engin
 - Training coding agents on structured data tasks
 - Benchmarking LLMs on multi-table query reasoning
 - Evaluating query optimization understanding (index use, join strategy)
+- Testing compositional SQL skills (CTEs, window functions, CASE expressions)
 
 ---
 
-## Tasks
+## Tasks (5 total)
 
-| Task ID | Name | Difficulty | Tables | Rows |
+| Task ID | Name | Difficulty | Tables | Total Rows |
 |---|---|---|---|---|
 | `task_salary_agg` | Department Salary Aggregation | Easy | 1 | 500 |
 | `task_top_customers` | Top Customers by Revenue | Medium | 2 | 2,300 |
-| `task_user_retention` | High-Value User Retention Report | Hard | 3 | 5,600 |
+| `task_inventory_stock` | Inventory Stock Calculation | Medium | 3 | 1,205 |
+| `task_user_retention` | High-Value User Retention | Hard | 3 | 5,600 |
+| `task_sales_pipeline` | Sales Pipeline Performance | Hard | 3 | 3,230 |
 
 ### Task 1 — Easy: Department Salary Aggregation
 
@@ -45,11 +48,23 @@ JOIN `customers` and `orders`. Filter for completed orders only. Aggregate total
 
 **Required columns:** `customer_id`, `customer_name`, `country`, `total_revenue`, `order_count`
 
-### Task 3 — Hard: High-Value User Retention Report
+### Task 3 — Medium: Inventory Stock Calculation
+
+JOIN `products` with `inventory_movements` across 5 warehouses. Calculate net stock (sum of all quantity movements) for non-discontinued products. Order by lowest stock first to identify at-risk items.
+
+**Required columns:** `product_id`, `sku`, `product_name`, `category`, `net_stock`, `total_movements`
+
+### Task 4 — Hard: High-Value User Retention Report
 
 Three-table CTE query across `users`, `event_logs`, and `sessions`. Find users with ≥5 events, ≥1 purchase event, and average session duration >300 seconds. Requires multi-CTE or subquery structure.
 
 **Required columns:** `user_id`, `username`, `plan`, `event_count`, `purchase_count`, `avg_session_duration_s`
+
+### Task 5 — Hard: Sales Pipeline Performance Analysis
+
+Three-table CTE analysis across `sales_reps`, `deals`, and `activities`. Calculate won revenue, win rate, average activities per deal, and quota attainment per rep. Requires CASE expressions, multiple CTEs, and percentage calculations.
+
+**Required columns:** `rep_id`, `rep_name`, `region`, `won_revenue`, `win_rate`, `avg_activities_per_deal`, `quota_attainment`
 
 ---
 
@@ -93,12 +108,15 @@ Rewards are continuous in `[0.0, 1.0]` with partial credit across multiple dimen
 
 | Component | Weight | Description |
 |---|---|---|
-| Column presence | 25–30% | Are all required columns present and correctly named? |
-| Result correctness | 25–40% | Row count, data types, positive values, filter correctness |
-| Ordering | 10–15% | Is the result ordered correctly (e.g. DESC by revenue)? |
-| Efficiency bonus | up to 25% | Does the query use indexes (from SQLite EXPLAIN QUERY PLAN)? |
+| Column presence | 15–20% | Are all required columns present and correctly named? |
+| **Data correctness** | **35–45%** | Row-by-row comparison against reference SQL output |
+| Result structure | 10–20% | Row count, data types, filter correctness |
+| Ordering | 10% | Is the result ordered correctly? |
+| Efficiency bonus | up to 15% | Does the query use indexes (from SQLite EXPLAIN QUERY PLAN)? |
 
 Graders are **deterministic**: same SQL + same seed → same score, always.
+
+The **data correctness** component is the key differentiator — it runs the reference SQL against the same database and compares results row-by-row with numeric tolerance.
 
 ---
 
@@ -107,8 +125,8 @@ Graders are **deterministic**: same SQL + same seed → same score, always.
 ### Local
 
 ```bash
-git clone <repo>
-cd sql-query-env
+git clone https://github.com/rahulgaur608/meta.git
+cd meta
 pip install -r requirements.txt
 
 # Run the API server
@@ -142,10 +160,10 @@ docker run -p 7860:7860 \
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/health` | Liveness check |
-| `GET` | `/tasks` | List all tasks |
-| `POST` | `/reset` | Start a new episode |
-| `POST` | `/step` | Submit a SQL query |
-| `GET` | `/state` | Get current state |
+| `GET` | `/tasks` | List all 5 tasks with metadata |
+| `POST` | `/reset` | Start a new episode for a task |
+| `POST` | `/step` | Submit a SQL query for grading |
+| `GET` | `/state` | Get current state without advancing |
 | `DELETE` | `/session/{id}` | Clean up session |
 
 ### Example interaction
@@ -170,19 +188,23 @@ curl -X POST http://localhost:7860/step \
 ## Project Structure
 
 ```
-sql-query-env/
-├── app.py              # FastAPI server
-├── inference.py        # Baseline LLM agent
-├── openenv.yaml        # OpenEnv spec
-├── Dockerfile
-├── requirements.txt
+meta/
+├── app.py              # FastAPI server (OpenEnv HTTP API)
+├── inference.py        # Baseline LLM agent using OpenAI client
+├── openenv.yaml        # OpenEnv spec (5 tasks)
+├── Dockerfile          # HF Spaces deployment
+├── pyproject.toml      # Dependencies
+├── server/
+│   └── app.py          # Multi-mode deployment wrapper
 ├── env/
 │   ├── models.py       # Typed data models (dataclass + model_dump())
 │   ├── database.py     # SQLite in-memory engine with EXPLAIN analysis
 │   └── environment.py  # SQLQueryEnv: reset() / step() / state()
-└── tasks/
-    ├── registry.py     # Task schemas, seed data, objectives
-    └── graders.py      # Deterministic 0.0–1.0 graders
+├── tasks/
+│   ├── registry.py     # 5 task schemas, seed data, objectives, reference SQL
+│   └── graders.py      # Deterministic 0.0–1.0 graders with data validation
+└── tests/
+    └── test_env.py     # Environment unit tests
 ```
 
 ---
@@ -199,12 +221,14 @@ sql-query-env/
 
 ## Baseline Scores (reference)
 
-Scores from a correct reference solution:
+Scores from the reference SQL solutions:
 
-| Task | Score |
-|---|---|
-| `task_salary_agg` (easy) | 1.0000 |
-| `task_top_customers` (medium) | 0.9500 |
-| `task_user_retention` (hard) | 0.8500 |
+| Task | Difficulty | Reference Score |
+|---|---|---|
+| `task_salary_agg` | Easy | 1.0000 |
+| `task_top_customers` | Medium | 1.0000 |
+| `task_inventory_stock` | Medium | 1.0000 |
+| `task_user_retention` | Hard | 1.0000 |
+| `task_sales_pipeline` | Hard | 1.0000 |
 
 LLM agents (frontier models) typically score 0.5–0.8 on hard tasks on first attempt, with improvement across steps.

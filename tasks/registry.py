@@ -1,7 +1,7 @@
 """
 Task registry for the SQL Query Optimization environment.
-Three tasks covering easy → medium → hard difficulty.
-Each task specifies schema, seed data, expected answer, and grader logic.
+Five tasks covering easy → medium → hard difficulty.
+Each task specifies schema, seed data, expected answer, reference SQL, and grader logic.
 """
 from __future__ import annotations
 
@@ -107,6 +107,88 @@ def _gen_logs(n: int = 5000, n_users: int = 100, seed: int = 42) -> tuple[List, 
     return users, logs, sessions
 
 
+def _gen_products_inventory(n_products: int = 200, n_inventory: int = 1000, seed: int = 42) -> tuple[List, List, List]:
+    """Generate products, inventory movements, and warehouses for Task 4."""
+    rng = random.Random(seed)
+    categories = ["Electronics", "Clothing", "Food", "Tools", "Furniture", "Sports"]
+    warehouses = [
+        {"id": i, "name": f"Warehouse {chr(64+i)}", "city": rng.choice(["NYC", "LA", "CHI", "HOU", "PHX"])}
+        for i in range(1, 6)
+    ]
+
+    products = []
+    for i in range(1, n_products + 1):
+        products.append({
+            "id": i,
+            "sku": f"SKU-{i:04d}",
+            "name": f"Product {i}",
+            "category": rng.choice(categories),
+            "unit_price": round(rng.uniform(5, 500), 2),
+            "weight_kg": round(rng.uniform(0.1, 50), 1),
+            "is_discontinued": 1 if rng.random() < 0.15 else 0,
+        })
+
+    inventory = []
+    for i in range(1, n_inventory + 1):
+        inventory.append({
+            "id": i,
+            "product_id": rng.randint(1, n_products),
+            "warehouse_id": rng.randint(1, 5),
+            "quantity": rng.randint(-50, 200),  # negative = outbound
+            "movement_type": rng.choice(["inbound", "outbound", "adjustment", "return"]),
+            "movement_date": f"2023-{rng.randint(1,12):02d}-{rng.randint(1,28):02d}",
+        })
+
+    return products, inventory, warehouses
+
+
+def _gen_sales_pipeline(n_deals: int = 800, n_reps: int = 30, seed: int = 42) -> tuple[List, List, List]:
+    """Generate sales reps, deals, and activities for Task 5."""
+    rng = random.Random(seed)
+    regions = ["North", "South", "East", "West"]
+    rep_names = ["Alex", "Blake", "Casey", "Dana", "Ellis", "Fran", "Glen", "Harper",
+                 "Ira", "Jules", "Kelly", "Lane", "Morgan", "Noel", "Pat", "Quinn"]
+
+    reps = []
+    for i in range(1, n_reps + 1):
+        reps.append({
+            "id": i,
+            "name": f"{rng.choice(rep_names)} {chr(64 + (i % 26) + 1)}.",
+            "region": rng.choice(regions),
+            "hire_date": f"202{rng.randint(0,2)}-{rng.randint(1,12):02d}-01",
+            "quota": round(rng.uniform(50000, 500000), 2),
+        })
+
+    stages = ["prospect", "qualified", "proposal", "negotiation", "closed_won", "closed_lost"]
+    deals = []
+    for i in range(1, n_deals + 1):
+        stage = rng.choice(stages)
+        deals.append({
+            "id": i,
+            "rep_id": rng.randint(1, n_reps),
+            "company_name": f"Company {rng.randint(1, 200)}",
+            "deal_value": round(rng.uniform(1000, 100000), 2),
+            "stage": stage,
+            "created_date": f"2023-{rng.randint(1,12):02d}-{rng.randint(1,28):02d}",
+            "close_date": f"2023-{rng.randint(1,12):02d}-{rng.randint(1,28):02d}" if stage.startswith("closed") else None,
+            "probability": {"prospect": 10, "qualified": 25, "proposal": 50, "negotiation": 75, "closed_won": 100, "closed_lost": 0}[stage],
+        })
+
+    activity_types = ["call", "email", "meeting", "demo", "follow_up"]
+    activities = []
+    for i in range(1, n_deals * 3 + 1):
+        activities.append({
+            "id": i,
+            "deal_id": rng.randint(1, n_deals),
+            "activity_type": rng.choice(activity_types),
+            "activity_date": f"2023-{rng.randint(1,12):02d}-{rng.randint(1,28):02d}",
+            "notes": f"Activity note {i}",
+            "duration_min": rng.randint(5, 120),
+        })
+
+    return reps, deals, activities
+
+
 # ---------------------------------------------------------------------------
 # Task 1 — Easy: Aggregate Query
 # ---------------------------------------------------------------------------
@@ -142,6 +224,16 @@ TASK_EASY_OBJECTIVE = (
 )
 
 TASK_EASY_EXPECTED_COLUMNS = {"department", "avg_salary", "headcount"}
+
+TASK_EASY_REFERENCE_SQL = """
+SELECT department,
+       ROUND(AVG(salary), 2) AS avg_salary,
+       COUNT(*) AS headcount
+FROM employees
+WHERE is_active = 1
+GROUP BY department
+ORDER BY avg_salary DESC
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -195,6 +287,20 @@ TASK_MEDIUM_OBJECTIVE = (
 TASK_MEDIUM_EXPECTED_COLUMNS = {
     "customer_id", "customer_name", "country", "total_revenue", "order_count"
 }
+
+TASK_MEDIUM_REFERENCE_SQL = """
+SELECT c.id AS customer_id,
+       c.name AS customer_name,
+       c.country,
+       ROUND(SUM(o.amount), 2) AS total_revenue,
+       COUNT(o.id) AS order_count
+FROM customers c
+JOIN orders o ON o.customer_id = c.id
+WHERE o.status = 'completed'
+GROUP BY c.id, c.name, c.country
+ORDER BY total_revenue DESC
+LIMIT 10
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -261,6 +367,214 @@ TASK_HARD_EXPECTED_COLUMNS = {
     "user_id", "username", "plan", "event_count", "purchase_count", "avg_session_duration_s"
 }
 
+TASK_HARD_REFERENCE_SQL = """
+WITH user_events AS (
+    SELECT user_id,
+           COUNT(*) AS event_count,
+           SUM(CASE WHEN event = 'purchase' THEN 1 ELSE 0 END) AS purchase_count
+    FROM event_logs
+    GROUP BY user_id
+    HAVING event_count >= 5 AND purchase_count >= 1
+),
+user_sessions AS (
+    SELECT user_id,
+           ROUND(AVG(duration_s), 1) AS avg_session_duration_s
+    FROM sessions
+    GROUP BY user_id
+    HAVING avg_session_duration_s > 300
+)
+SELECT u.id AS user_id,
+       u.username,
+       u.plan,
+       ue.event_count,
+       ue.purchase_count,
+       us.avg_session_duration_s
+FROM users u
+JOIN user_events ue ON u.id = ue.user_id
+JOIN user_sessions us ON u.id = us.user_id
+ORDER BY ue.event_count DESC
+"""
+
+
+# ---------------------------------------------------------------------------
+# Task 4 — Medium: Inventory Stock Calculation (NEW)
+# ---------------------------------------------------------------------------
+
+TASK_INVENTORY_ID = "task_inventory_stock"
+
+def get_task_inventory_schema() -> List[TableSchema]:
+    return [
+        TableSchema(
+            name="products",
+            row_count=200,
+            description="Product catalog",
+            columns=[
+                ColumnDef(name="id", type="integer", primary_key=True, nullable=False),
+                ColumnDef(name="sku", type="text", nullable=False),
+                ColumnDef(name="name", type="text", nullable=False),
+                ColumnDef(name="category", type="text", nullable=False, index=True),
+                ColumnDef(name="unit_price", type="float", nullable=False),
+                ColumnDef(name="weight_kg", type="float"),
+                ColumnDef(name="is_discontinued", type="integer", nullable=False, index=True),
+            ],
+        ),
+        TableSchema(
+            name="inventory_movements",
+            row_count=1000,
+            description="Stock movements (inbound/outbound/returns/adjustments)",
+            columns=[
+                ColumnDef(name="id", type="integer", primary_key=True, nullable=False),
+                ColumnDef(name="product_id", type="integer", nullable=False, foreign_key="products.id", index=True),
+                ColumnDef(name="warehouse_id", type="integer", nullable=False, foreign_key="warehouses.id", index=True),
+                ColumnDef(name="quantity", type="integer", nullable=False),
+                ColumnDef(name="movement_type", type="text", nullable=False, index=True),
+                ColumnDef(name="movement_date", type="timestamp", index=True),
+            ],
+        ),
+        TableSchema(
+            name="warehouses",
+            row_count=5,
+            description="Warehouse locations",
+            columns=[
+                ColumnDef(name="id", type="integer", primary_key=True, nullable=False),
+                ColumnDef(name="name", type="text", nullable=False),
+                ColumnDef(name="city", type="text", nullable=False),
+            ],
+        ),
+    ]
+
+def get_task_inventory_data() -> Dict[str, List[Dict[str, Any]]]:
+    products, inventory, warehouses = _gen_products_inventory()
+    return {"products": products, "inventory_movements": inventory, "warehouses": warehouses}
+
+TASK_INVENTORY_OBJECTIVE = (
+    "Calculate the current net stock for each ACTIVE (non-discontinued) product across ALL warehouses. "
+    "Net stock = SUM of all inventory movement quantities (positive = inbound, negative = outbound). "
+    "Only include products that have at least one movement. "
+    "Return: product_id, sku, product_name, category, net_stock, total_movements. "
+    "Order by net_stock ascending (lowest stock first) to identify products at risk."
+)
+
+TASK_INVENTORY_EXPECTED_COLUMNS = {
+    "product_id", "sku", "product_name", "category", "net_stock", "total_movements"
+}
+
+TASK_INVENTORY_REFERENCE_SQL = """
+SELECT p.id AS product_id,
+       p.sku,
+       p.name AS product_name,
+       p.category,
+       SUM(im.quantity) AS net_stock,
+       COUNT(im.id) AS total_movements
+FROM products p
+JOIN inventory_movements im ON im.product_id = p.id
+WHERE p.is_discontinued = 0
+GROUP BY p.id, p.sku, p.name, p.category
+ORDER BY net_stock ASC
+"""
+
+
+# ---------------------------------------------------------------------------
+# Task 5 — Hard: Sales Pipeline Analysis with Ranking (NEW)
+# ---------------------------------------------------------------------------
+
+TASK_PIPELINE_ID = "task_sales_pipeline"
+
+def get_task_pipeline_schema() -> List[TableSchema]:
+    return [
+        TableSchema(
+            name="sales_reps",
+            row_count=30,
+            description="Sales team members with quotas",
+            columns=[
+                ColumnDef(name="id", type="integer", primary_key=True, nullable=False),
+                ColumnDef(name="name", type="text", nullable=False),
+                ColumnDef(name="region", type="text", nullable=False, index=True),
+                ColumnDef(name="hire_date", type="timestamp"),
+                ColumnDef(name="quota", type="float", nullable=False),
+            ],
+        ),
+        TableSchema(
+            name="deals",
+            row_count=800,
+            description="Sales opportunities with stage tracking",
+            columns=[
+                ColumnDef(name="id", type="integer", primary_key=True, nullable=False),
+                ColumnDef(name="rep_id", type="integer", nullable=False, foreign_key="sales_reps.id", index=True),
+                ColumnDef(name="company_name", type="text", nullable=False),
+                ColumnDef(name="deal_value", type="float", nullable=False),
+                ColumnDef(name="stage", type="text", nullable=False, index=True),
+                ColumnDef(name="created_date", type="timestamp", index=True),
+                ColumnDef(name="close_date", type="timestamp"),
+                ColumnDef(name="probability", type="integer", nullable=False),
+            ],
+        ),
+        TableSchema(
+            name="activities",
+            row_count=2400,
+            description="Sales activities linked to deals",
+            columns=[
+                ColumnDef(name="id", type="integer", primary_key=True, nullable=False),
+                ColumnDef(name="deal_id", type="integer", nullable=False, foreign_key="deals.id", index=True),
+                ColumnDef(name="activity_type", type="text", nullable=False, index=True),
+                ColumnDef(name="activity_date", type="timestamp", index=True),
+                ColumnDef(name="notes", type="text"),
+                ColumnDef(name="duration_min", type="integer"),
+            ],
+        ),
+    ]
+
+def get_task_pipeline_data() -> Dict[str, List[Dict[str, Any]]]:
+    reps, deals, activities = _gen_sales_pipeline()
+    return {"sales_reps": reps, "deals": deals, "activities": activities}
+
+TASK_PIPELINE_OBJECTIVE = (
+    "For each sales rep, calculate their pipeline performance: "
+    "(1) Total won revenue (sum of deal_value where stage = 'closed_won'), "
+    "(2) Win rate (closed_won deals / total closed deals * 100, rounded to 1dp), "
+    "(3) Average activities per deal (total activities / total deals, rounded to 1dp), "
+    "(4) Quota attainment percentage (won_revenue / quota * 100, rounded to 1dp). "
+    "Only include reps who have at least 1 closed_won deal. "
+    "Return: rep_id, rep_name, region, won_revenue (rounded 2dp), win_rate, avg_activities_per_deal, quota_attainment. "
+    "Order by quota_attainment descending."
+)
+
+TASK_PIPELINE_EXPECTED_COLUMNS = {
+    "rep_id", "rep_name", "region", "won_revenue", "win_rate",
+    "avg_activities_per_deal", "quota_attainment"
+}
+
+TASK_PIPELINE_REFERENCE_SQL = """
+WITH rep_deals AS (
+    SELECT d.rep_id,
+           COUNT(*) AS total_deals,
+           SUM(CASE WHEN d.stage = 'closed_won' THEN 1 ELSE 0 END) AS won_deals,
+           SUM(CASE WHEN d.stage IN ('closed_won', 'closed_lost') THEN 1 ELSE 0 END) AS closed_deals,
+           SUM(CASE WHEN d.stage = 'closed_won' THEN d.deal_value ELSE 0 END) AS won_revenue
+    FROM deals d
+    GROUP BY d.rep_id
+    HAVING won_deals >= 1
+),
+rep_activities AS (
+    SELECT d.rep_id,
+           COUNT(a.id) AS total_activities
+    FROM deals d
+    JOIN activities a ON a.deal_id = d.id
+    GROUP BY d.rep_id
+)
+SELECT sr.id AS rep_id,
+       sr.name AS rep_name,
+       sr.region,
+       ROUND(rd.won_revenue, 2) AS won_revenue,
+       ROUND(rd.won_deals * 100.0 / rd.closed_deals, 1) AS win_rate,
+       ROUND(COALESCE(ra.total_activities, 0) * 1.0 / rd.total_deals, 1) AS avg_activities_per_deal,
+       ROUND(rd.won_revenue * 100.0 / sr.quota, 1) AS quota_attainment
+FROM sales_reps sr
+JOIN rep_deals rd ON sr.id = rd.rep_id
+LEFT JOIN rep_activities ra ON sr.id = ra.rep_id
+ORDER BY quota_attainment DESC
+"""
+
 
 # ---------------------------------------------------------------------------
 # Registry
@@ -286,6 +600,7 @@ TASK_REGISTRY = {
             "COUNT(*) gives headcount per group.",
         ],
         "expected_columns": TASK_EASY_EXPECTED_COLUMNS,
+        "reference_sql": TASK_EASY_REFERENCE_SQL,
     },
     TASK_MEDIUM_ID: {
         "schema_fn": get_task_medium_schema,
@@ -307,6 +622,7 @@ TASK_REGISTRY = {
             "Use LIMIT 10 after ORDER BY.",
         ],
         "expected_columns": TASK_MEDIUM_EXPECTED_COLUMNS,
+        "reference_sql": TASK_MEDIUM_REFERENCE_SQL,
     },
     TASK_HARD_ID: {
         "schema_fn": get_task_hard_schema,
@@ -330,5 +646,54 @@ TASK_REGISTRY = {
             "AVG(s.duration_s) for session duration, joined on user_id.",
         ],
         "expected_columns": TASK_HARD_EXPECTED_COLUMNS,
+        "reference_sql": TASK_HARD_REFERENCE_SQL,
+    },
+    TASK_INVENTORY_ID: {
+        "schema_fn": get_task_inventory_schema,
+        "data_fn": get_task_inventory_data,
+        "objective": TASK_INVENTORY_OBJECTIVE,
+        "difficulty": DifficultyLevel.medium,
+        "name": "Inventory Stock Calculation",
+        "description": "Calculate net stock per product by aggregating inventory movements across warehouses.",
+        "constraints": [
+            "Only non-discontinued products (is_discontinued = 0).",
+            "Products must have at least one inventory movement.",
+            "Net stock = SUM(quantity) across all warehouses.",
+            "Columns: product_id, sku, product_name, category, net_stock, total_movements.",
+            "Order by net_stock ascending.",
+        ],
+        "hints": [
+            "JOIN products with inventory_movements on product_id.",
+            "WHERE is_discontinued = 0 filters active products.",
+            "SUM(quantity) gives net stock (positive + negative movements).",
+            "COUNT(im.id) gives total movement count.",
+        ],
+        "expected_columns": TASK_INVENTORY_EXPECTED_COLUMNS,
+        "reference_sql": TASK_INVENTORY_REFERENCE_SQL,
+    },
+    TASK_PIPELINE_ID: {
+        "schema_fn": get_task_pipeline_schema,
+        "data_fn": get_task_pipeline_data,
+        "objective": TASK_PIPELINE_OBJECTIVE,
+        "difficulty": DifficultyLevel.hard,
+        "name": "Sales Pipeline Performance Analysis",
+        "description": "Multi-CTE analysis of sales reps, deals, and activities with quota attainment.",
+        "constraints": [
+            "Only include reps with at least 1 closed_won deal.",
+            "Win rate = closed_won / total closed deals * 100.",
+            "Avg activities per deal = total activities / total deals.",
+            "Quota attainment = won_revenue / quota * 100.",
+            "Columns: rep_id, rep_name, region, won_revenue, win_rate, avg_activities_per_deal, quota_attainment.",
+            "All percentages rounded to 1dp, revenue to 2dp.",
+            "Order by quota_attainment descending.",
+        ],
+        "hints": [
+            "Use a CTE for deal-level aggregation per rep.",
+            "Use a second CTE for activity counts per rep.",
+            "JOIN both CTEs with sales_reps for the final output.",
+            "CASE WHEN stage = 'closed_won' for filtering won deals.",
+        ],
+        "expected_columns": TASK_PIPELINE_EXPECTED_COLUMNS,
+        "reference_sql": TASK_PIPELINE_REFERENCE_SQL,
     },
 }

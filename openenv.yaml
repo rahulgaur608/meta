@@ -65,6 +65,16 @@ tasks:
     max_steps: 10
     reward_range: [0.0, 1.0]
 
+  - id: task_inventory_stock
+    name: "Inventory Stock Calculation"
+    difficulty: medium
+    description: >
+      Calculate net stock per product by aggregating inventory movements 
+      (1000 records) across 5 warehouses. Filter discontinued products, 
+      compute net stock and movement counts, order by lowest stock first.
+    max_steps: 10
+    reward_range: [0.0, 1.0]
+
   - id: task_user_retention
     name: "High-Value User Retention Report"
     difficulty: hard
@@ -76,17 +86,29 @@ tasks:
     max_steps: 10
     reward_range: [0.0, 1.0]
 
+  - id: task_sales_pipeline
+    name: "Sales Pipeline Performance Analysis"
+    difficulty: hard
+    description: >
+      Multi-CTE analysis across sales_reps (30), deals (800), and 
+      activities (2400). Calculate win rates, quota attainment, and 
+      activity metrics per rep. Requires complex aggregation with 
+      CASE expressions and multiple CTEs joined together.
+    max_steps: 10
+    reward_range: [0.0, 1.0]
+
 reward:
   type: continuous
   range: [0.0, 1.0]
   description: >
-    Composite reward with partial credit:
-    - Column presence and naming (25–30%)
-    - Result correctness (row count, data types, values) (25–40%)
-    - Ordering correctness (10–15%)
-    - Query efficiency (index usage vs seq scan) (up to 25%)
-    Reward is computed deterministically from the query result and 
-    SQLite EXPLAIN QUERY PLAN output.
+    Composite reward with partial credit and reference-answer validation:
+    - Column presence and naming (15–20%)
+    - Data correctness vs reference SQL output (35–45%)
+    - Result structure (row count, data types, filter correctness) (10–20%)
+    - Ordering correctness (10%)
+    - Query efficiency (index usage vs seq scan) (up to 15%)
+    Reward is computed deterministically from the query result, 
+    reference answer comparison, and SQLite EXPLAIN QUERY PLAN output.
 
 endpoints:
   health: GET /health
@@ -98,4 +120,4 @@ endpoints:
 docker:
   base_image: python:3.11-slim
   port: 7860
-  startup_command: "uv run server"
+  startup_command: "uvicorn app:app --host 0.0.0.0 --port 7860"

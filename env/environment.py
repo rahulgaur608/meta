@@ -127,8 +127,14 @@ class SQLQueryEnv:
         result, elapsed_ms = self._db.execute_query(action.sql)
         plan = self._db.get_execution_plan(action.sql)
 
-        # Grade the result
-        grade = grader(result, plan, action.sql, cfg["expected_columns"])
+        # Compute reference result for data-level grading
+        ref_result = None
+        ref_sql = cfg.get("reference_sql")
+        if ref_sql:
+            ref_result, _ = self._db.execute_query(ref_sql.strip())
+
+        # Grade the result (with reference for data comparison)
+        grade = grader(result, plan, action.sql, cfg["expected_columns"], ref_result=ref_result)
         reward: float = grade["score"]
 
         # Episode ends if: max steps reached OR perfect score
